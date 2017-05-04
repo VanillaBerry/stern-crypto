@@ -22,11 +22,9 @@ private:
     int l = 1;
 
     int select_column(int *selected); // select one point from massive 1..n or return -1
-
-//    int chose_columns(int *_chosen);
-
-//    int array_settle_down(int** array, int width, int height);
-//    int gauss_elim_field2(int** array, int width, int height);
+    int elimination(int **matrix, int rows, int cols, int piv_row, int piv_col);
+    int c_n_k(int n, int k);
+    int generate_next_p_bits(int curr, int p);
 
 };
 

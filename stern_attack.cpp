@@ -1,5 +1,6 @@
 #include "stern_attack.h"
 #include "QTime"
+#include "qmath.h"
 
 stern_attack::stern_attack(int **_codematrix, int _len, int _dim, int _w)
 {
@@ -15,6 +16,7 @@ stern_attack::~stern_attack()
 {
     if (codematrix != NULL)
     {
+        //memory freeing
         for(int i=0; i < n_k; ++i)
         delete [] codematrix[i];
 
@@ -35,32 +37,159 @@ int stern_attack::proceed()
     int* chosencolumns = new int[length_n];
     int* pivots = new int[n_k];
 
-    int i = 0;
+    int num_columns_processed = 0;
     int col_num;
 
-    while(i < n_k)
+    while(num_columns_processed < n_k)
     {
         col_num = select_column(chosencolumns);
+
+        for(int i = 0; i < n_k; i++)
+        {
+            if (pivots[i] == 0 and codematrix[col_num][i] == 1)
+            {
+                elimination(codematrix, n_k, length_n, col_num, i);
+                pivots[i] = 1;
+                num_columns_processed += 1;
+                break;
+            }; //endif
+        }; //endfor
+    }; //endwhile
+
+// step 2
+// spare columns to the two sets
+    //первый элемент это количество занятых позиций массива
+    int* arrayX = new int[dimension_k];
+    //первый элемент это количество занятых позиций массива
+    int* arrayY = new int[dimension_k];
+    int coin;
+    int index;
+
+    for(int i = 0; i < length_n; i++)
+    {
+        //если еще не выбрана для Гаусса
+        if (chosencolumns[i] == 0)
+        {
+            coin = qrand() % 2;
+
+            if (coin)
+            {
+                index = arrayX[0];
+                arrayX[index+1] = i;
+                arrayX[0] += 1;
+            }
+            else
+            {
+                index = arrayY[0];
+                arrayY[index+1] = i;
+                arrayY[0] += 1;
+            };// end if coin
+        };// end if
+    };
+
+    if (arrayX[0] < p) return 1;
+    if (arrayY[0] < p) return 1;
+
+// step 3
+// randomly choose a set J
+    // будет сгенерировано подмножество из l элементов
+
+    int* arrayJ = new int[n_k];
+    int uptol = 0;
+    int dice;
+
+    while(uptol < l)
+    {
+        dice = qrand() % n_k;
+
+        if (arrayJ[dice] == 0)
+        {
+            arrayJ[dice] = 1;
+            uptol += 1;
+        };
+    };
+
+// step 4
+// generation of X and Y subs
+    int ** pi_A;
+    int ** pi_B;
+
+// num of subsets (and rows) in A and B
+    int subsA = c_n_k(arrayX[0], p);
+    int subsB = c_n_k(arrayY[0], p);
+
+    int min_combo = qPow(2, p) - 1;
+    int max_combo_A = qPow(2, arrayX[0]) - qPow(2, p);
+    int max_combo_B = qPow(2, arrayY[0]) - qPow(2, p);
+
+// init the matrices
+    pi_A = new int*[subsA];
+    int *guide_values_A = new int[subsA];
+
+    pi_B = new int*[subsB];
+    int *guide_values_B = new int[subsB];
+
+    for(int i = 0; i < subsA; i++)
+        pi_A[i] = new int[n_k];
+
+    for(int i = 0; i < subsB; i++)
+        pi_B[i] = new int[n_k];
+
+// time to fill matrices!
+
+
+// some preparations
+
+    guide_values_A[0] = min_combo;
+
+    for(int i = 1; i < subsA; i++)
+        guide_values_A[i] = generate_next_p_bits(guide_values_A[i-1]);
+
+    guide_values_B[0] = min_combo;
+
+    for(int i = 1; i < subsB; i++)
+        guide_values_B[i] = generate_next_p_bits(guide_values_B[i-1]);
+
+// go!
+    int bit;
+
+    for(int i = 1; i < subsA; i++)
+    {
+        for(int j = 0; j >= n_k; j--)
+        {
+        /*    bit = guide_values_A[i] <<*/
+
+
+
+        };
 
 
     };
 
 
 
- /*   for(int i=0; i < n_k; ++i)
-        for(int j=0; j < n_k; ++j)
-        {
-            int chsn = chosencolumns[i];
-            squarematrix[i][j] = codematrix[chsn][j];
-        };*/
-
-// gaussian elimination
 
 
 // freeing memory and returning result
 
-    delete [] chosencolumns; //see step 1
-    delete [] pivots; //step 1
+    delete [] chosencolumns; // see step 1
+    delete [] pivots; // step 1
+
+    delete [] arrayX; // step 2
+    delete [] arrayY; // step 2
+
+    delete [] arrayJ; // step 3
+
+    for(int i = 0; i < subsA; i++)  // step 4
+        delete [] pi_A[i];
+
+    for(int i = 0; i < subsB; i++)  // step 4
+        delete [] pi_B[i];
+
+    delete [] pi_A; // step 4
+    delete [] pi_B; // step 4
+
+
     return 0;
 };
 
@@ -73,96 +202,71 @@ int stern_attack::select_column(int *selected)
    while((tries < 1000) and (result == -1))
    {
     _res = qrand() % length_n;
+
     if (selected[_res] == 0)
-    {
-        result = _res;
-        selected[_res] = 1;
-    }; // endif
+     {
+         result = _res;
+         selected[_res] = 1;
+     }; // endif
+
     tries += 1;
    }; // endwhile
 
    return result;
 };
-/*
-int stern_attack::chose_columns(int *_chosen)
+
+int stern_attack::elimination(int **matrix, int rows, int cols, int piv_row, int piv_col)
 {
-    bool* freecolumns = new bool[length_n];
+    int value, newvalue;
 
-    int curr_num = 0;
-    int num_to_chose = length_n - dimension_k;
-    int attempt = -1;
-
-    while(curr_num < num_to_chose)
+    for(int i = 0; i < rows; i++)
     {
-        while(attempt == -1) attempt = select_column(freecolumns);
-
-        _chosen[curr_num] = attempt;
-
-        attempt = -1;
-        curr_num += 1;
-
-    };
-
-    delete[] freecolumns;
-
-    return 0;
-};
-*/
-
-   /*
-int stern_attack::array_settle_down(int **array, int width, int height)
-{
-    if (_q <= 0) return 1;
-
-    for(int i=0; i < width; ++i)
-    for(int j=0; j < height; ++j)
-    {
-        int curr = array[i][j];
-
-        while (curr < 0) curr += 8;
-
-        curr = curr % 2;
-
-        array[i][j] = curr;
-    };
-
-    return 0;
-};
-*/
-   /*
-int stern_attack::gauss_elim_field2(int **array, int width, int height)
-{
-    int * piv_points = new int [height];
-    for(int i = 0; i < height; ++i) piv_points[i] = -1;
-
-    array_settle_down(array, width, height, 2); // приводим числа в поле F_2
-
-    for(int currcolumn = 0; currcolumn < height; ++currcolumn)
-    {
-        //поиск единички в столбце
-        int row = 0; int point = -1;
-        while((row < height) and (point == -1))
-        {
-            int point = array[row][currcolumn];
-            if ((point == 1) and (piv_points[row] != -1))
-                piv_points[row] = currcolumn;
-            else
+        if (i != piv_row and matrix[i][piv_col] != 0)
+            for(int j = 0; j < cols; j++)
             {
-                point = -1;
-                row += 1;
+                value = matrix[i][j];
+                newvalue = (value + matrix[piv_row][j]) % 2;
+                matrix[i][j] = newvalue;
             };
-
-        };//endwhile row
-
-        //теперь единичкой зануляем верхние и нижние строки
-
-
-
-
-    };//endfor currcolumn
-
-
+    };
 
     return 0;
 };
-*/
+
+int stern_attack::c_n_k(int n, int k)
+{
+    int res = 1;
+    int n_k = n-k;
+
+    int n_k_fact = 1;
+
+    for(int i = 2; i <= n; i++)
+    {
+        res *= i;
+        if (i <= k) res = res/i;
+        if (i <= n_k) n_k_fact *= i;
+    };
+
+    res = res/n_k_fact;
+
+    return res;
+};
+
+int generate_next_p_bits(int curr, int p)
+{
+    int newvalue = curr;
+    int count;
+
+    for(int i = 1; i < 4000000; i++)
+    {
+        newvalue = curr + i;
+        count = 0;
+
+        for(int j = 0; j < 40; j++)
+            count += (newvalue >> j) % 2;
+
+        if (count == p) break;
+    };
+
+    return newvalue;
+};
