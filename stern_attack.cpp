@@ -2,7 +2,7 @@
 #include "QTime"
 #include "qmath.h"
 
-stern_attack::stern_attack(int **_codematrix, int _len, int _dim, int _w)
+stern_attack::stern_attack(int **_codematrix, int _len, int _dim, int _w, int _p, int _l)
 {
     codematrix = _codematrix;
     length_n = _len;
@@ -10,18 +10,20 @@ stern_attack::stern_attack(int **_codematrix, int _len, int _dim, int _w)
     weight_w = _w;
     n_k = length_n - dimension_k;
 
+    p = _p;
+    l = _l;
 };
 
 stern_attack::~stern_attack()
 {
-    if (codematrix != NULL)
+  /*  if (codematrix != NULL)
     {
         //memory freeing
-        for(int i=0; i < n_k; ++i)
+        for(int i = 0; i < n_k; ++i)
         delete [] codematrix[i];
 
         delete [] codematrix;
-    };
+    };*/
 };
 
 int stern_attack::proceed()
@@ -34,34 +36,54 @@ int stern_attack::proceed()
 // step 1
 // modified gaussian elimination
 
-    int* chosencolumns = new int[length_n];
+    chosencolumns = new int[length_n];
     int* pivots = new int[n_k];
 
     int num_columns_processed = 0;
     int col_num;
 
+
     while(num_columns_processed < n_k)
     {
         col_num = select_column(chosencolumns);
 
-        for(int i = 0; i < n_k; i++)
+        int i = 0;
+        int exit = false;
+
+        while(!exit)
         {
             if (pivots[i] == 0 and codematrix[col_num][i] == 1)
             {
                 elimination(codematrix, n_k, length_n, col_num, i);
                 pivots[i] = 1;
                 num_columns_processed += 1;
+                i = 1;
+            }; //endif
+
+            i += 1;
+
+            if (i == n_k) return 1;
+        };
+
+        for(int i = 0; i < n_k; i++)
+        {
+            if (pivots[i] == 0 and codematrix[col_num][i] == 1)
+            {
+               // elimination(codematrix, n_k, length_n, col_num, i);
+                pivots[i] = 1;
+                num_columns_processed += 1;
                 break;
             }; //endif
-        }; //endfor
-    }; //endwhile
+        }; //endfor*/
+    }; //endwhile*/
+
+    emit completed_step1();
 
 // step 2
 // spare columns to the two sets
-    //первый элемент это количество занятых позиций массива
-    int* arrayX = new int[dimension_k];
-    //первый элемент это количество занятых позиций массива
-    int* arrayY = new int[dimension_k];
+    int * arrayX = new int[dimension_k]();
+    int * arrayY = new int[dimension_k]();
+
     int coin;
     int index;
 
@@ -114,6 +136,9 @@ int stern_attack::proceed()
     int ** pi_A;
     int ** pi_B;
 
+    int ** guide_values_A;
+    int ** guide_values_B;
+
 // num of subsets (and rows) in A and B
     int subsA = c_n_k(arrayX[0], p);
     int subsB = c_n_k(arrayY[0], p);
@@ -123,24 +148,30 @@ int stern_attack::proceed()
     int max_combo_B = qPow(2, arrayY[0]) - qPow(2, p);
 
 // init the matrices
-    pi_A = new int*[subsA];
-    int *guide_values_A = new int[subsA];
+ /*   pi_A = new int*[subsA];
+    guide_values_A = new int*[subsA];
 
     pi_B = new int*[subsB];
-    int *guide_values_B = new int[subsB];
+    guide_values_B = new int*[subsB];
 
     for(int i = 0; i < subsA; i++)
+    {
         pi_A[i] = new int[n_k];
+        guide_values_A = new int[dimension_k];
+    };
 
     for(int i = 0; i < subsB; i++)
+    {
         pi_B[i] = new int[n_k];
+        guide_values_B = new int[dimension_k];
+    };*/
 
 // time to fill matrices!
 
 
 // some preparations
 
-    guide_values_A[0] = min_combo;
+/*    guide_values_A[0] = min_combo;
 
     for(int i = 1; i < subsA; i++)
         guide_values_A[i] = generate_next_p_bits(guide_values_A[i-1]);
@@ -157,14 +188,14 @@ int stern_attack::proceed()
     {
         for(int j = 0; j >= n_k; j--)
         {
-        /*    bit = guide_values_A[i] <<*/
+            bit = guide_values_A[i] <<*/
 
 
 
-        };
+/*        };
 
 
-    };
+    };*/
 
 
 
@@ -172,10 +203,10 @@ int stern_attack::proceed()
 
 // freeing memory and returning result
 
-    delete [] chosencolumns; // see step 1
-    delete [] pivots; // step 1
+    //delete [] chosencolumns; // see step 1
+   // delete [] pivots; // step 1
 
-    delete [] arrayX; // step 2
+ /*   delete [] arrayX; // step 2
     delete [] arrayY; // step 2
 
     delete [] arrayJ; // step 3
@@ -187,7 +218,7 @@ int stern_attack::proceed()
         delete [] pi_B[i];
 
     delete [] pi_A; // step 4
-    delete [] pi_B; // step 4
+    delete [] pi_B; // step 4*/
 
 
     return 0;
@@ -252,7 +283,7 @@ int stern_attack::c_n_k(int n, int k)
     return res;
 };
 
-int generate_next_p_bits(int curr, int p)
+int stern_attack::generate_next_p_bits(int curr, int p)
 {
     int newvalue = curr;
     int count;

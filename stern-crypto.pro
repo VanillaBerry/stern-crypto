@@ -25,9 +25,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    stern_attack.cpp
+    stern_attack.cpp \
+    stern_attack_view.cpp
 
 HEADERS  += mainwindow.h \
-    stern_attack.h
+    stern_attack.h \
+    stern_attack_view.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+    stern_attack_view.ui
