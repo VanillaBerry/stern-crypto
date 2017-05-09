@@ -68,9 +68,10 @@ void stern_attack_view::handle_try_again()
 
     ui->plainTextEdit_state->appendPlainText("New attack is started");
 
+    candidate = false; // это важно!
+
     int result = step1();
     step1_view();
-    ui->plainTextEdit_state->appendPlainText("Step 1 is completed");
     ui->plainTextEdit_state->appendPlainText("Step 1 err :" + QString::number(result));
 
     if (result == 0)
@@ -141,6 +142,7 @@ int stern_attack_view::step1()
     // modified gaussian elimination
         chosencolumns = new int[length_n]();
         int* pivots = new int[n_k]();
+        congruity = new int[n_k](); //здесь была ошибка: вектор переопределялся
 
         int num_columns_processed = 0;
         int col_num = 0;
@@ -150,26 +152,31 @@ int stern_attack_view::step1()
             col_num = select_column(chosencolumns);
             if (col_num == -1) return 1;
 
-            int i = -1;
-            int exit = false;
+            int i = 0;
+            bool exit = false;
 
             while(!exit)
             {
-                i += 1;
-
                 if (pivots[i] == 0 and codematrix[i][col_num] == 1) // здесь была эпичная ошибка
                 {
-//                    elimination(codematrix, n_k, length_n, col_num, i);
+//                  elimination(codematrix, n_k, length_n, col_num, i);
                     elimination(codematrix, n_k, length_n, i, col_num);
+
                     pivots[i] = 1;
                     num_columns_processed += 1;
+
+                    congruity[i] = col_num; //добавлено 09.05.17
+
+                    chosencolumns[col_num] = 1;
                     exit = true;
                 }; //endif
 
-                if (i == n_k)
+                i += 1;
+
+                if (i == n_k and !exit)
                 {
-                    exit = true;
                     chosencolumns[col_num] = 2;
+                    exit = true;                    
                 };
 
             }; //endwhile
@@ -229,6 +236,8 @@ void stern_attack_view::step1_view()
     ui->plainTextEdit_step1->appendPlainText(str);
     ui->plainTextEdit_step1->appendPlainText(line);
 
+
+
     for (int i = 0; i < n_k; i++)
     {
         str = "";
@@ -238,6 +247,17 @@ void stern_attack_view::step1_view()
 
         ui->plainTextEdit_step1->appendPlainText(str);
     };// end for*/
+
+    ui->plainTextEdit_step1->appendPlainText("Congruity vector");
+
+    QString con_vector = "";
+
+    for (int i = 0; i < n_k; i++)
+    {
+        con_vector += QString::number(congruity[i]) + " ";
+    };
+
+    ui->plainTextEdit_step1->appendPlainText(con_vector);
 };
 
 void stern_attack_view::step2_view()
@@ -320,7 +340,7 @@ int stern_attack_view::select_column(int *selected)
     if (selected[_res] == 0)
      {
          result = _res;
-         selected[_res] = 1;
+//         selected[_res] = 1;
      }; // endif
 
     tries += 1;
@@ -389,10 +409,16 @@ int stern_attack_view::step4()
         for(int i = 0; i < subsA; i++) // перебор по векторам
         {
             index = 0;
+
+            //для удобства генерируем строку, в которой единицы будут там, где
+            //колонки матрицы принадлежат множеству А
             guiderow = new int[length_n]();
 
             for(int k = 0; k < length_n; k++)
             {
+                //если столбец во множестве Х, то проверяем
+                //находится ли он также во множестве А
+                //соответственно изменяем индексы
                 if (arrayX[k] == 1)
                 {
                     guiderow[k] = guide_values_A[i][index];
@@ -400,6 +426,14 @@ int stern_attack_view::step4()
                 };
             };
 
+
+            //в оригинальном алгоритме надо считать векторы длины l
+            //для удобства я делаю векторы длины n-k
+            //и элементы с номерами тех строк, которые не выбраны во множество J
+            //автоматически равны нулю
+
+            //сравнение множеств А и В будет идти именно по этим векторам
+            //а векторы V необходимо считать отдельно
             for(int j = 0; j < n_k; j++) // перебор по элементам конкретного вектора
             {
                 if (arrayJ[j] != 0) // если строка выбрана во множество J
@@ -462,7 +496,10 @@ int stern_attack_view::step4()
 
 int stern_attack_view::step5()
 {
+    //Заготавливаем счетчик пар
     num_of_pairs = 0;
+    //Заготавливаем массив под пары, с запасом
+    //Под каждую пару будем далее выделять память индивидуально
     pairs = new int*[subsA*subsB];
 
 
@@ -471,9 +508,12 @@ int stern_attack_view::step5()
         {
             if (vectors_are_equal(pi_A[i], pi_B[j], n_k))
             {
+                //Выделяем память под запись пары
                 pairs[num_of_pairs] = new int[2];
+                //Записываем номера "рдителей" пары
                 pairs[num_of_pairs][0] = i;
                 pairs[num_of_pairs][1] = j;
+                //Увеличиваем счетчик пар
                 num_of_pairs += 1;
             };
         };
@@ -483,8 +523,12 @@ int stern_attack_view::step5()
     int sum;
     int index;
     int pair_index;
+
+    //аналогично шагу 4, делаем векторы длины n
+    //отражающие принадлежность колонки множеству
     int *guiderowA;
     int *guiderowB;
+    //переменная под вес претендента
     int candidate_weight;
 
     for(int i = 0; i < num_of_pairs; i++)
@@ -527,7 +571,7 @@ int stern_attack_view::step5()
             for(int s = 0; s < length_n; s++) //цикл по суммируемым элементам
             {
                 if(guiderowA[s] != 0 or guiderowB[s] != 0)
-                    sum += codematrix[k][i];
+                    sum += codematrix[k][s]; //вот тут была замечательная ошибка, не тот номер индекса (вместо s индекс i)
             };
 
             vector[k] = sum % 2;
@@ -778,18 +822,19 @@ int stern_attack_view::step6()
 
     for(int i = 0; i < length_n; i++)
     {
-        if(guiderowA[i] != 0 or guiderowB != 0)
+        if(guiderowA[i] != 0 or guiderowB[i] != 0)
             y[i] = 1;
     };
+
+    int column;
 
     for(int i = 0; i < n_k; i++)
     {
         if (vector[i] != 0)
-            for(int j = 0; j < length_n; j++)
-            {
-                if(chosencolumns[j] == 1 and codematrix[i][j] == 1)
-                z[i] = 1;
-            };
+        {
+            column = congruity[i];
+            z[column] = 1;
+        };
     };
 
     for(int i = 0; i < length_n; i++)
@@ -802,7 +847,7 @@ int stern_attack_view::step6()
 
 void stern_attack_view::step6_view(){
     QString str;
-    ui->plainTextEdit_step5->appendPlainText("Vectors x, y, z");
+    ui->plainTextEdit_step6->appendPlainText("Vectors x, y, z");
 
     for(int i = 0; i < length_n; i++)
     {
@@ -814,51 +859,5 @@ void stern_attack_view::step6_view(){
     };
 
 
-    ui->plainTextEdit_step5->appendPlainText("");
+    ui->plainTextEdit_step6->appendPlainText("");
 };
-
-//----------------------------------------------------------------
-/*       for(int i = 0; i < n_k; i++)
-       {
-           if (pivots[i] == 0 and codematrix[i][col_num] == 1)
-           {
-              // elimination(codematrix, n_k, length_n, col_num, i);
-               pivots[i] = 1;
-               num_columns_processed += 1;
-               break;
-           }; //endif
-       }; //endfor*/
-//----------------------------------------------------------------
-/*   QString strX, strY, chsn;
-
-
-   for (int i = 0; i < length_n; i++)
-   {
-       if (arrayX[i] == 1)
-           strX += "+ ";
-       else
-           strX += "  ";
-
-       if (arrayY[i] == 1)
-           strY += "+ ";
-       else
-           strY += "  ";
-
-       if (chosencolumns[i] == 1)
-           chsn += "+ ";
-       else
-           chsn += "  ";
-
-   ui->plainTextEdit_step2->appendPlainText("X set");
-   ui->plainTextEdit_step2->appendPlainText(strX);
-   ui->plainTextEdit_step2->appendPlainText("Y set");
-   ui->plainTextEdit_step2->appendPlainText(strY);
-   ui->plainTextEdit_step2->appendPlainText("Chosen columns");
-   ui->plainTextEdit_step2->appendPlainText(chsn);
-
-   };*/
-//-----------------------------------------------------
-/*      int min_combo = qPow(2, p) - 1;
-        int max_combo_A = qPow(2, arrayX[0]) - qPow(2, p);
-        int max_combo_B = qPow(2, arrayY[0]) - qPow(2, p);
-*/

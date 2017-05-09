@@ -2,7 +2,6 @@
 #define STERN_ATTACK_VIEW_H
 
 #include <QWidget>
-#include <stern_attack.h>
 
 namespace Ui {
 class stern_attack_view;
@@ -24,6 +23,7 @@ private:
     int ** codematrix;
     int ** codematrix_copy;
     int* chosencolumns;
+    int* congruity;  // результаты шага 1, нужные для шага 6
 
 // step 2
     int* arrayX;
